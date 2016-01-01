@@ -150,10 +150,11 @@ func (t *traversal) distance() int {
 	return distance
 }
 
-func computeShortestRoute(graph map[string]*node) (distanceOfShortestRoute int) {
+func computeShortestRoute(graph map[string]*node) (distanceOfShortestRoute int, distanceOfLongestRoute int) {
 
 	// Set shortest distance to a very high number
 	distanceOfShortestRoute = 1 * 1024 * 1024 * 1024
+	distanceOfLongestRoute = 0
 
 	totalNumberOfRoutes := 0
 
@@ -179,6 +180,9 @@ func computeShortestRoute(graph map[string]*node) (distanceOfShortestRoute int) 
 				totalNumberOfRoutes++
 				if distance < distanceOfShortestRoute {
 					distanceOfShortestRoute = distance
+				}
+				if distance > distanceOfLongestRoute {
+					distanceOfLongestRoute = distance
 				}
 			}
 
@@ -215,7 +219,7 @@ func addRoute(from string, to string, distance int, graph map[string]*node) {
 	nto.distance[from] = distance
 }
 
-func findShortestRouteFromFile(filename string) (distanceOfShortestRoute int) {
+func findShortestRouteFromFile(filename string) (distanceOfShortestRoute int, distanceOfLongestRoute int) {
 	graph := make(map[string]*node, 64)
 
 	computator := func(text string, line int) {
@@ -237,11 +241,12 @@ func findShortestRouteFromFile(filename string) (distanceOfShortestRoute int) {
 		}
 	}
 
-	distanceOfShortestRoute = computeShortestRoute(graph)
+	distanceOfShortestRoute, distanceOfLongestRoute = computeShortestRoute(graph)
 	return
 }
 
 func main() {
-	distanceOfShortestRoute := findShortestRouteFromFile("input.text")
+	distanceOfShortestRoute, distanceOfLongestRoute := findShortestRouteFromFile("input.text")
 	fmt.Printf("The shortest route is: %v\n", distanceOfShortestRoute)
+	fmt.Printf("The longest route is: %v\n", distanceOfLongestRoute)
 }
