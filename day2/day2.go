@@ -42,14 +42,44 @@ func computeSlackArea(L int, W int, H int) (slack int) {
 	return
 }
 
-func howMuchPaperToOrder(filename string) (totalSurfaceArea int, ok bool) {
-	totalSurfaceArea = 0
+func minInt(a int, b int) (min int) {
+	min = a
+	if b < min {
+		min = b
+	}
+	return
+}
+
+func minimumSidesOfBox(L int, W int, H int) (min1 int, min2 int) {
+	min1 = minInt(L, W)
+	if H < min1 {
+		min1 = H
+		min2 = minInt(L, W)
+	} else if min1 == L {
+		min2 = minInt(W, H)
+	} else if min1 == W {
+		min2 = minInt(L, H)
+	}
+	return
+}
+
+func howMuchPaperToOrder(filename string) (totalSurfaceAreaOfWrappingPaper int, totalFeetOfRibbon int, ok bool) {
+	totalSurfaceAreaOfWrappingPaper = 0
+	totalFeetOfRibbon = 0
+
 	computator := func(line string) {
 		var L, W, H = lineToLWH(line)
+
+		// Compute length of ribbon = volume of gift + sum of 2 smallest sides
+		volumeOfPresentInFeet := L * W * H
+		minSide1, minSide2 := minimumSidesOfBox(L, W, H)
+		totalFeetOfRibbon += 2*minSide1 + 2*minSide2
+		totalFeetOfRibbon += volumeOfPresentInFeet
+
 		// Surface-Area = 2LW + 2LH + 2WH
-		totalSurfaceArea += (2 * L * W) + (2 * L * H) + (2 * W * H)
+		totalSurfaceAreaOfWrappingPaper += (2 * L * W) + (2 * L * H) + (2 * W * H)
 		// Slack = L*W
-		totalSurfaceArea += computeSlackArea(L, W, H)
+		totalSurfaceAreaOfWrappingPaper += computeSlackArea(L, W, H)
 	}
 
 	iterateOverLinesInTextFile(filename, computator)
@@ -58,10 +88,11 @@ func howMuchPaperToOrder(filename string) (totalSurfaceArea int, ok bool) {
 }
 
 func main() {
-	var totalSurfaceArea, ok = howMuchPaperToOrder("input.text")
+	var totalSurfaceAreaOfWrappingPaper, totalFeetOfRibbon, ok = howMuchPaperToOrder("input.text")
 	if ok {
-		fmt.Printf("The elves need to order %v square-feet of wrapping paper", totalSurfaceArea)
+		fmt.Printf("The elves need to order %v square-feet of wrapping paper\n", totalSurfaceAreaOfWrappingPaper)
+		fmt.Printf("and they need to order %v feet of ribbon\n", totalFeetOfRibbon)
 	} else {
-		fmt.Printf("Could not process the input")
+		fmt.Printf("Could not process the input\n")
 	}
 }
