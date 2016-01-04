@@ -261,7 +261,11 @@ func executeInstruction(i iInstruction, regmap map[string]uint16) (executed bool
 		fmt.Print("ILLEGAL OPCODE\n")
 	}
 
-	regmap[i.resRegister] = res
+	// Do not update the result register if it was already written to
+	if _, ok := regmap[i.resRegister]; ok == false {
+		regmap[i.resRegister] = res
+	}
+
 	executed = true
 	return
 }
@@ -290,20 +294,49 @@ func applySignalsFromFile(filename string) (wire uint16) {
 		fullyEvaluated = true
 		for _, i := range codemap {
 			if _, executed := exemap[i.lineNumber]; executed == false {
+				fullyEvaluated = false
 				if executeInstruction(i, regmap) {
 					exemap[i.lineNumber] = true
-				} else {
-					fullyEvaluated = false
+					// stop executing and start from the beginning again
+					break
 				}
 			}
 		}
 	}
 
 	wire, _ = regmap["a"]
+
+	// Part 2
+	fmt.Print("\n")
+	fmt.Printf("PART 2, currently wire-a signal = %v\n", wire)
+	fmt.Print("\n")
+
+	regmap = make(map[string]uint16)
+	exemap = make(map[int]bool)
+
+	regmap["b"] = wire
+
+	fullyEvaluated = false
+	for !fullyEvaluated {
+		fullyEvaluated = true
+		for _, i := range codemap {
+			if _, executed := exemap[i.lineNumber]; executed == false {
+				fullyEvaluated = false
+				if executeInstruction(i, regmap) {
+					exemap[i.lineNumber] = true
+					// stop executing and start from the beginning again
+					break
+				}
+			}
+		}
+	}
+
+	wire, _ = regmap["a"]
+
 	return
 }
 
 func main() {
 	var valueOnWire = applySignalsFromFile("input.text")
-	fmt.Printf("The signal on the wire is: %v", valueOnWire)
+	fmt.Printf("The signal on the wire is: %v\n", valueOnWire)
 }

@@ -38,33 +38,48 @@ func handoutPresentToCurrentLocation(X int, Y int, worldmap map[uint64]int) {
 func howManyHousesReceiveOnePresent(filename string) (numberOfHousesWithOnlyOnePresent int, ok bool) {
 	numberOfHousesWithOnlyOnePresent = 0
 
-	X := 0
-	Y := 0
-	worldmap := make(map[uint64]int)
-	handoutPresentToCurrentLocation(X, Y, worldmap)
+	X := [2]int{0, 0}
+	Y := [2]int{0, 0}
 
+	worldmap := make(map[uint64]int)
+
+	handoutPresentToCurrentLocation(0, 0, worldmap)
+	handoutPresentToCurrentLocation(0, 0, worldmap)
+
+	who := 0
 	computator := func(move rune) {
 		switch move {
 		case '<':
-			X++
+			X[who]++
 		case '>':
-			X--
+			X[who]--
 		case '^':
-			Y++
+			Y[who]++
 		case 'v':
-			Y--
+			Y[who]--
 		default:
 			return
 		}
-		handoutPresentToCurrentLocation(X, Y, worldmap)
+
+		handoutPresentToCurrentLocation(X[who], Y[who], worldmap)
+
+		switch who {
+		case 0:
+			who = 1
+		case 1:
+			who = 0
+		}
 	}
 	iterateOverCharsInTextFile(filename, computator)
 
-	for _, nrpresents := range worldmap {
-		if nrpresents >= 1 {
-			numberOfHousesWithOnlyOnePresent++
+	numberOfHousesWithOnlyOnePresent = len(worldmap)
+	/*
+		for _, nrpresents := range worldmap {
+			if nrpresents >= 1 {
+				numberOfHousesWithOnlyOnePresent++
+			}
 		}
-	}
+	*/
 
 	ok = true
 	return

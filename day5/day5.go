@@ -76,10 +76,49 @@ func isNiceString(str string) (nice bool) {
 	return
 }
 
+func isNiceStringNew(str string) (nice bool) {
+	fmt.Printf("%s: ", str)
+
+	// Identify any pairs
+	hasPair := false
+	for index := range str {
+		if (index + 1) < len(str) {
+			pair := str[index : index+2]
+			occu := strings.LastIndex(str, pair)
+			if occu != -1 && (index+1) < occu {
+				fmt.Printf("pair(%s) ", pair)
+				hasPair = true
+				break
+			}
+		}
+	}
+
+	// Repeat with letter in-between
+	repeatWithLetterInBetween := false
+	prevprev := rune(0)
+	prev := rune(0)
+	for index, current := range str {
+		if index >= 2 {
+			if prevprev == current {
+				fmt.Printf("repeat(%s)", str[index-2:index+1])
+				repeatWithLetterInBetween = true
+				break
+			}
+		}
+		prevprev = prev
+		prev = current
+	}
+	fmt.Print("\n")
+
+	nice = hasPair && repeatWithLetterInBetween
+
+	return
+}
+
 func howManyNiceStringsInFile(filename string) (nice int) {
 	nice = 0
 	computator := func(line string) {
-		if isNiceString(line) {
+		if isNiceStringNew(line) {
 			nice++
 		}
 	}

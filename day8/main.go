@@ -69,22 +69,54 @@ func countNumberOfInMemoryChars(str string) (total int32, inmemory int32) {
 	return
 }
 
-func evalLiteralsFromFile(filename string) (total int32, inmemory int32) {
-	total = 0
-	inmemory = 0
+func reEncodeString(str string) (newstr string) {
+	newstr = ""
+	escaped := false
+	for _, char := range str {
+		if escaped {
+			escaped = false
+			if char == 'x' {
+				newstr = newstr + "\\\\" + string(char)
+			} else {
+				newstr = newstr + "\\\\\\" + string(char)
+			}
+		} else if char == '"' {
+			newstr = newstr + "\"\\\""
+		} else if char == '\\' {
+			escaped = true
+		} else {
+			newstr = newstr + string(char)
+		}
+	}
+	return
+}
+
+func evalLiteralsFromFile(filename string) (result int32) {
+	total := int32(0)
+	inmemory := int32(0)
+
+	encodedTotal := int32(0)
+	encodedInmemory := int32(0)
 
 	computator := func(text string, line int) {
 		t, i := countNumberOfInMemoryChars(text)
-		fmt.Printf("Line(%d): total:%v, in-memory:%v\n", line, t, i)
+		fmt.Printf("Line(%d): total:%v, in-memory:%v", line, t, i)
 		total += t
 		inmemory += i
+
+		text = reEncodeString(text)
+		et, ei := countNumberOfInMemoryChars(text)
+		fmt.Printf(", encoded: total:%v, in-memory:%v\n", et, ei)
+		encodedTotal += et
+		encodedInmemory += ei
 	}
 	iterateOverLinesInTextFile(filename, computator)
 
+	result = encodedTotal - total
 	return
 }
 
 func main() {
-	total, inmemory := evalLiteralsFromFile("input.text")
-	fmt.Printf("The result is: %v", total-inmemory)
+	result := evalLiteralsFromFile("input.text")
+	fmt.Printf("The result is: %v", result)
 }

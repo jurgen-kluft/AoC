@@ -60,7 +60,7 @@ func main() {
 		saltedSecretKey = fmt.Sprintf("%s%v", secretKey, i)
 		hasher.Write([]byte(saltedSecretKey))
 		hash = hasher.Sum(nil)
-		if isHashStartingWithNZeros(5, hash) {
+		if isHashStartingWithNZeros(6, hash) {
 			fmt.Printf("The number that produces the hash: %v\n", i)
 			break
 		}

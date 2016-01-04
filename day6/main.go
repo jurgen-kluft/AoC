@@ -115,6 +115,35 @@ func applyLightActionToLightRange(lightAction eLightAction, lightRange range2D, 
 	}
 }
 
+func determineLitCountByAction2(lightAction eLightAction, current int) (lit int) {
+	lit = current
+	switch lightAction {
+	case cTurnOn:
+		lit++
+	case cTurnOff:
+		if lit > 0 {
+			lit--
+		}
+	case cToggle:
+		lit += 2
+	}
+	return
+}
+
+func applyLightActionToLightRange2(lightAction eLightAction, lightRange range2D, lightGrid map[uint64]int) {
+	for x := lightRange.from.X; x <= lightRange.to.X; x++ {
+		for y := lightRange.from.Y; y <= lightRange.to.Y; y++ {
+			loc := (uint64(x) << 32) | (uint64(y) & 0xFFFFFFFF)
+			if lit, ok := lightGrid[loc]; ok == false {
+				lit = 0
+				lightGrid[loc] = determineLitCountByAction2(lightAction, lit)
+			} else {
+				lightGrid[loc] = determineLitCountByAction2(lightAction, lit)
+			}
+		}
+	}
+}
+
 func countNumberOfLitLights(lightGrid map[uint64]bool) (lit int) {
 	lit = 0
 	for _, v := range lightGrid {
@@ -125,24 +154,36 @@ func countNumberOfLitLights(lightGrid map[uint64]bool) (lit int) {
 	return
 }
 
-func howManyLightsAreLitFromFile(filename string) (lit int) {
+func countTotalBrightness(lightGrid map[uint64]int) (totalBrightness int) {
+	totalBrightness = 0
+	for _, v := range lightGrid {
+		totalBrightness += v
+	}
+	return
+}
+
+func howManyLightsAreLitFromFile(filename string) (lit int, brightness int) {
 	lit = 0
 
-	lightGrid := make(map[uint64]bool)
+	lightOnOrOffGrid := make(map[uint64]bool)
+	lightBrightnessGrid := make(map[uint64]int)
 
 	computator := func(line string) {
 		lightAction, lightRange := decodeLine(line)
-		applyLightActionToLightRange(lightAction, lightRange, lightGrid)
+		applyLightActionToLightRange(lightAction, lightRange, lightOnOrOffGrid)
+		applyLightActionToLightRange2(lightAction, lightRange, lightBrightnessGrid)
 	}
 
 	iterateOverLinesInTextFile(filename, computator)
 
-	lit = countNumberOfLitLights(lightGrid)
+	lit = countNumberOfLitLights(lightOnOrOffGrid)
+	brightness = countTotalBrightness(lightBrightnessGrid)
 
 	return
 }
 
 func main() {
-	var howManyLightsAreLit = howManyLightsAreLitFromFile("input.text")
-	fmt.Printf("There are %v lights lit", howManyLightsAreLit)
+	var howManyLightsAreLit, totalBrightness = howManyLightsAreLitFromFile("input.text")
+	fmt.Printf("There are %v lights lit ", howManyLightsAreLit)
+	fmt.Printf("with a total brightness of %v", totalBrightness)
 }
