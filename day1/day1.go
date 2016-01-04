@@ -21,15 +21,19 @@ func iterateOverLinesInTextFile(filename string, action func(string)) {
 	}
 }
 
-func toWhichFloorSantaGoes(filename string) (floor int, ok bool) {
+func toWhichFloorSantaGoes(filename string) (floor int, basement int, ok bool) {
 	floor = 0
+	basement = -1
 	computator := func(line string) {
-		for _, op := range line {
+		for pos, op := range line {
 			switch op {
 			case '(':
 				floor++
 			case ')':
 				floor--
+			}
+			if floor == -1 && basement == -1 {
+				basement = pos + 1
 			}
 		}
 	}
@@ -40,9 +44,10 @@ func toWhichFloorSantaGoes(filename string) (floor int, ok bool) {
 }
 
 func main() {
-	var floor, ok = toWhichFloorSantaGoes("input.text")
+	var floor, basement, ok = toWhichFloorSantaGoes("input.text")
 	if ok {
-		fmt.Printf("Santa went to the %v floor", floor)
+		fmt.Printf("Santa went to the %v floor\n", floor)
+		fmt.Printf("Santa first at the basement %v\n", basement)
 	} else {
 		fmt.Printf("Could not process the input")
 	}
