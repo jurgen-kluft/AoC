@@ -1,7 +1,7 @@
 package main
 
 /*
---- Day 10, findShortestRouteFromFile(filename string)Elves Look, Elves Say ---
+--- Day 10, Elves Look, Elves Say ---
 
 Today, the Elves are playing a game called look-and-say. They take turns making
 sequences by reading aloud the previous sequence and using that reading as the
