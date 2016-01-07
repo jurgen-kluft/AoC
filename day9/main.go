@@ -194,6 +194,7 @@ func computeShortestRoute(graph map[string]*node) (distanceOfShortestRoute int, 
 				}
 			}
 		}
+		break
 	}
 	fmt.Printf("Traveled %v number of routes\n", totalNumberOfRoutes)
 	return
