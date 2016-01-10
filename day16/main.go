@@ -51,6 +51,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func iterateOverLinesInTextFile(filename string, action func(string, int)) {
@@ -70,38 +72,170 @@ func iterateOverLinesInTextFile(filename string, action func(string, int)) {
 	}
 }
 
+type compound struct {
+	name  string
+	score int
+}
+
+const (
+	eEvalEqual int = 0
+	eEvalLess  int = -1
+	eEvalMore  int = 1
+)
+
+var sCompoundEval = map[string]int{
+	"children":    eEvalEqual,
+	"cats":        eEvalMore,
+	"samoyeds":    eEvalEqual,
+	"pomeranians": eEvalLess,
+	"akitas":      eEvalEqual,
+	"vizslas":     eEvalEqual,
+	"goldfish":    eEvalLess,
+	"trees":       eEvalMore,
+	"cars":        eEvalEqual,
+	"perfumes":    eEvalEqual,
+}
+
+var sCompoundScore = map[string]int{
+	"children":    1,
+	"cats":        1,
+	"samoyeds":    1000,
+	"pomeranians": 1000,
+	"akitas":      1000,
+	"vizslas":     1000,
+	"goldfish":    1000,
+	"trees":       1,
+	"cars":        1000,
+	"perfumes":    1,
+}
+
+func isNameOfCompound(name string) bool {
+	_, x := sCompoundScore[name]
+	return x
+}
+
+func getScoreOfCompound(cmpName string, lhsValue int, rhsValue int) int {
+	evalType := sCompoundEval[cmpName]
+	score := 0
+	switch evalType {
+	case eEvalEqual:
+		if lhsValue == rhsValue {
+			score = 1
+		}
+	case eEvalLess:
+		if lhsValue < rhsValue {
+			score = 1
+		}
+	case eEvalMore:
+		if lhsValue > rhsValue {
+			score = 1
+		}
+	}
+	score = sCompoundScore[cmpName] * score
+	return score
+}
+
 type aunt struct {
 	name      string
 	index     int
 	compounds map[string]int
 }
 
-func printAll(aunts []*aunt) {
+func (r *aunt) print(eol string) {
+	fmt.Printf("%s[%d]: ", r.name, r.index)
+	for k, v := range r.compounds {
+		fmt.Printf("{%s:%v}", k, v)
+	}
+	fmt.Printf(eol)
+}
 
+func printAll(aunts []*aunt) {
+	for _, a := range aunts {
+		a.print("\n")
+	}
 }
 
 func (r *aunt) deserialize(str string) {
 	// Example line:
 	//      Sue 1: cars: 9, akitas: 3, goldfish: 0
 	r.compounds = make(map[string]int)
-	fmt.Sscanf(str, "%s %d", r.name, r.index)
+
+	f := strings.FieldsFunc(str, func(r rune) bool {
+		return r == ':' || r == ',' || r == ' '
+	})
+
+	r.name = f[0]
+	r.index, _ = strconv.Atoi(f[1])
+
+	doprint := false
+
+	for i := 2; i < len(f)-1; i += 2 {
+		if doprint {
+			fmt.Printf("%s:%s ", f[i], f[i+1])
+		}
+		if isNameOfCompound(f[i]) {
+			r.compounds[f[i]], _ = strconv.Atoi(f[i+1])
+		}
+	}
+	if doprint {
+		fmt.Print("\n")
+	}
 }
 
-func readInputFromFile(filename string) (aunts []*aunt) {
+func readInputFromFile(filename string) (tofind *aunt, aunts []*aunt) {
 	aunts = make([]*aunt, 0)
 
 	computator := func(text string, line int) {
-		r := new(aunt)
-		r.deserialize(text)
-		aunts = append(aunts, r)
+		if line == 1 {
+			r := new(aunt)
+			r.deserialize(text)
+			tofind = r
+		} else {
+			r := new(aunt)
+			r.deserialize(text)
+			aunts = append(aunts, r)
+		}
 	}
 	iterateOverLinesInTextFile(filename, computator)
 
 	return
 }
 
-func main() {
-	aunts := readInputFromFile("input.text")
-	printAll(aunts)
+func computeScore(tofind *aunt, match *aunt) int {
+	score := 0
+	for n1, v1 := range tofind.compounds {
+		if v2, x2 := match.compounds[n1]; x2 {
+			if n1 == "trees" {
 
+			} else if n1 == "cats" {
+
+			} else {
+				if v1 == v2 {
+					score += getScoreOfCompound(n1, v1, v2)
+				}
+			}
+		}
+	}
+	return score
+}
+
+func findBestMatchingAunt(tofind *aunt, aunts []*aunt) int {
+	bestMatch := 0
+	bestScore := 0
+	for i, a := range aunts {
+		score := computeScore(tofind, a)
+		if score > bestScore {
+			bestScore = score
+			bestMatch = aunts[i].index
+		}
+	}
+	return bestMatch
+}
+
+func main() {
+	tofind, aunts := readInputFromFile("input.text")
+	//tofind.print("\n")
+	//printAll(aunts)
+	match := findBestMatchingAunt(tofind, aunts)
+	fmt.Printf("Our Aunt is number %v\n", match)
 }
