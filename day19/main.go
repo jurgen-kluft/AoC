@@ -51,6 +51,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func iterateOverLinesInTextFile(filename string, action func(string, int)) {
@@ -70,176 +71,102 @@ func iterateOverLinesInTextFile(filename string, action func(string, int)) {
 	}
 }
 
-func deserializeRow(str string) []byte {
-	// Example line:
-	//      #..####.##..#...#..#...#...###.#.#.#..#....#.##..#...##...#..#.....##..#####....#.##..##....##.#....
-
-	row := make([]byte, len(str), len(str))
-	for i, c := range str {
-		if c == '#' {
-			row[i] = 1
-		} else if c == '@' {
-			row[i] = 0x11
-		} else if c == '.' {
-			row[i] = 0
-		} else if c == ',' {
-			row[i] = 0x10
-		}
-	}
-	return row
+type molecule struct {
+	sequence string
+	replacer string
 }
 
-func readInputFromFile(filename string) (grid [][]byte) {
-	grid = make([][]byte, 0, 100)
+func (m *molecule) deserialize(str string) {
+	// Example line:
+	//      Al => ThF
 
+	parts := strings.Split(str, "=>")
+	m.sequence = strings.Trim(parts[0], " ")
+	m.replacer = strings.Trim(parts[1], " ")
+}
+
+func printReplacements(r []*molecule) {
+	for _, n := range r {
+		fmt.Printf("%s => %s\n", n.sequence, n.replacer)
+	}
+}
+
+func readInputFromFile(filename string) (medicine string, replacements []*molecule) {
+	replacements = make([]*molecule, 0, 100)
+
+	medicine = ""
+	state := "replacements"
 	computator := func(text string, line int) {
-		row := deserializeRow(text)
-		grid = append(grid, row)
+		if text == "" {
+			state = "medicine"
+		} else {
+			if state == "replacements" {
+				m := &molecule{sequence: "", replacer: ""}
+				m.deserialize(text)
+				replacements = append(replacements, m)
+			} else {
+				medicine = text
+			}
+		}
 	}
 	iterateOverLinesInTextFile(filename, computator)
 
 	return
 }
 
-func copyGrid(grid [][]byte) [][]byte {
-	gridCopy := make([][]byte, len(grid), len(grid))
-	for y := range grid {
-		row := grid[y]
-		rowCopy := make([]byte, len(row), len(row))
-		gridCopy[y] = rowCopy
-		for x := range row {
-			rowCopy[x] = row[x]
-		}
-	}
-	return gridCopy
-}
-func resetGrid(grid [][]byte) {
-	for y := range grid {
-		row := grid[y]
-		for x := range row {
-			row[x] = 0
-		}
-	}
-}
-
-func getState(x int, y int, grid [][]byte) (byte, bool) {
-	height := len(grid)
-	width := len(grid[0])
-	if x < 0 || y < 0 {
-		return 0, false
-	} else if x >= width || y >= height {
-		return 0, false
-	}
-	return grid[y][x], true
-}
-
-func setState(state byte, x int, y int, grid [][]byte) {
-	grid[y][x] = state
-}
-
-func switchLight(x int, y int, grid [][]byte) byte {
-	center, _ := getState(x, y, grid)
-	if center&0x10 == 0x10 {
-		return center
-	}
-
-	// check all 8 neighbors
-	neighbors := 0
-	neighborsON := 0
-	for ny := y - 1; ny <= y+1; ny++ {
-		for nx := x - 1; nx <= x+1; nx++ {
-			if nx == x && ny == y {
-				continue
+func buildMedicine(medicinestr string, replaceat int, mol *molecule) string {
+	sl := len(mol.sequence)
+	rl := len(mol.replacer)
+	l := rl - sl
+	scratch := make([]rune, len(medicinestr)+l)
+	for i, c := range medicinestr {
+		if i >= replaceat {
+			if i >= replaceat+sl {
+				scratch[i+l] = c
 			}
-			neigbor, ok := getState(nx, ny, grid)
-			if ok {
-				neighbors++
-				if neigbor&1 == 1 {
-					neighborsON++
+		} else {
+			scratch[i] = c
+		}
+	}
+	for i, c := range mol.replacer {
+		scratch[replaceat+i] = c
+	}
+	return string(scratch)
+}
+
+func computeMedicine(medicinestr string, replacements []*molecule) (distinct int) {
+	distinct = 0
+
+	medicines := make(map[string]int)
+
+	for _, mol := range replacements {
+		for mci := range medicinestr {
+			found := true
+			for msi := range mol.sequence {
+				mcie := mci + msi
+				if mcie == len(medicinestr) || mol.sequence[msi] != medicinestr[mcie] {
+					found = false
+					break
+				}
+			}
+			if found {
+				medicine := buildMedicine(medicinestr, mci, mol)
+				if mc, exists := medicines[medicine]; exists {
+					medicines[medicine] = mc + 1
+				} else {
+					distinct++
+					medicines[medicine] = 0
 				}
 			}
 		}
 	}
-
-	// Flip the state of the light
-	// state = ON, stays ON when 2 OR 3 neighbors are ON, otherwise --> OFF
-	// state = OFF, 3 neighbors are ON --> ON
-	if center&1 == 1 {
-		//fmt.Printf("ON: neighbors ON = %v\n", neighborsON)
-		if 3 == neighborsON || 2 == neighborsON {
-			center = 1
-		} else {
-			center = 0
-		}
-	} else {
-		//fmt.Printf("OFF: neighbors ON = %v\n", neighborsON)
-		if 3 == neighborsON {
-			center = 1
-		}
-	}
-	return center
-}
-
-func printGrid(grid [][]byte) {
-	for y := 0; y < len(grid); y++ {
-		row := grid[y]
-		for x := 0; x < len(row); x++ {
-			state, _ := getState(x, y, grid)
-			if state&1 == 1 {
-				fmt.Print("#")
-			} else if state&1 == 0 {
-				fmt.Print(".")
-			}
-		}
-		fmt.Print("\n")
-	}
-}
-
-func animateFrame(current [][]byte, next [][]byte) int {
-	ON := 0
-	for y := 0; y < len(current); y++ {
-		row := current[y]
-		for x := 0; x < len(row); x++ {
-			s := switchLight(x, y, current)
-			setState(s, x, y, next)
-			if s&1 == 1 {
-				ON++
-			}
-		}
-	}
-	return ON
-}
-
-func animate(animations int, grid [][]byte) int {
-	ON := 0
-	frame := copyGrid(grid)
-	resetGrid(frame)
-
-	for a := 0; a < animations; a++ {
-		fmt.Printf("Frame: %v\n", a)
-		if (a & 1) == 0 {
-			ON = animateFrame(grid, frame)
-			printGrid(frame)
-		} else {
-			ON = animateFrame(frame, grid)
-			printGrid(grid)
-		}
-	}
-	return ON
-}
-
-func setStuckLights(grid [][]byte) {
-	h := len(grid) - 1
-	w := len(grid[0]) - 1
-	grid[0][0] = 0x11
-	grid[0][w] = 0x11
-	grid[h][0] = 0x11
-	grid[h][w] = 0x11
+	return
 }
 
 func main() {
-	grid := readInputFromFile("input.text")
-	setStuckLights(grid)
-	numON := animate(100, grid)
-	fmt.Printf("Total number of lights ON %v\n", numON)
+	medicine, replacements := readInputFromFile("input.text")
+	fmt.Println(medicine)
+	printReplacements(replacements)
+	distinct := computeMedicine(medicine, replacements)
+	fmt.Printf("Found %v distinct medicine molecules\n", distinct)
 }
