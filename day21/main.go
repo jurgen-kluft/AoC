@@ -93,9 +93,9 @@ func iterateOverLinesInTextFile(filename string, action func(string, int)) {
 }
 
 type stats struct {
-	HitPoints int32
-	Damage    int32
-	Armor     int32
+	HitPoints int
+	Damage    int
+	Armor     int
 }
 
 func (s *stats) deserialize(str string) {
@@ -103,11 +103,11 @@ func (s *stats) deserialize(str string) {
 	if len(parts) == 2 {
 		value, _ := strconv.ParseInt(strings.Trim(parts[1], " "), 10, 32)
 		if parts[0] == "Hit Points" {
-			s.HitPoints = int32(value)
+			s.HitPoints = int(value)
 		} else if parts[0] == "Damage" {
-			s.Damage = int32(value)
+			s.Damage = int(value)
 		} else if parts[0] == "Armor" {
-			s.Armor = int32(value)
+			s.Armor = int(value)
 		}
 	}
 }
@@ -121,23 +121,23 @@ func (s *stats) print() {
 
 type weapon struct {
 	Name   string
-	Cost   int32
-	Damage int32
-	Armor  int32
+	Cost   int
+	Damage int
+	Armor  int
 }
 
 type armor struct {
 	Name   string
-	Cost   int32
-	Damage int32
-	Armor  int32
+	Cost   int
+	Damage int
+	Armor  int
 }
 
 type ring struct {
 	Name   string
-	Cost   int32
-	Damage int32
-	Armor  int32
+	Cost   int
+	Damage int
+	Armor  int
 }
 
 type shop struct {
@@ -166,15 +166,15 @@ func (s *shop) deserialize(str string) {
 
 		switch ctgr {
 		case "weapon":
-			w := weapon{Name: name, Cost: int32(cost), Damage: int32(damg), Armor: int32(armr)}
+			w := weapon{Name: name, Cost: int(cost), Damage: int(damg), Armor: int(armr)}
 			s.weapons = append(s.weapons, w)
 			break
 		case "armor":
-			a := armor{Name: name, Cost: int32(cost), Damage: int32(damg), Armor: int32(armr)}
+			a := armor{Name: name, Cost: int(cost), Damage: int(damg), Armor: int(armr)}
 			s.armors = append(s.armors, a)
 			break
 		case "ring":
-			r := ring{Name: name, Cost: int32(cost), Damage: int32(damg), Armor: int32(armr)}
+			r := ring{Name: name, Cost: int(cost), Damage: int(damg), Armor: int(armr)}
 			s.rings = append(s.rings, r)
 			break
 		}
@@ -210,8 +210,8 @@ func (s *shop) print() {
 	}
 }
 
-func readInputFromFile(filename string) (shopx *shop, statx *stats) {
-	statx = &stats{}
+func readInputFromFile(filename string) (shopx *shop, statx stats) {
+	statx = stats{}
 	shopx = &shop{weapons: make([]weapon, 0), armors: make([]armor, 0), rings: make([]ring, 0)}
 
 	object := ""
@@ -235,19 +235,146 @@ func readInputFromFile(filename string) (shopx *shop, statx *stats) {
 	return shopx, statx
 }
 
-func findOptimumThingsToBuyToBeatBoss(player *stats, boss *stats, shop *shop) {
+type buyer struct {
+	weaponIndex int
+	armorIndex  int
+	ring1Index  int
+	ring2Index  int
+
+	// Iterator
+	// BuyWeapon() - BuyArmor() - BuyRing() - BuyRing()
+
+}
+
+// Buy weapon, armor and rings
+func (b *buyer) buy(player stats, shop *shop) (s stats) {
+	w := shop.weapons[b.weaponIndex]
+	a := shop.armors[b.armorIndex]
+	r1 := shop.rings[b.ring1Index]
+	r2 := ring{Cost: 0, Damage: 0, Armor: 0}
+	if b.ring2Index < len(shop.rings) {
+		r2 = shop.rings[b.ring2Index]
+	}
+
+	s.HitPoints = player.HitPoints
+	s.Damage = player.Damage
+	s.Armor = player.Armor
+
+	s.Damage += w.Damage
+	s.Armor += a.Armor
+	s.Damage += r1.Damage
+	s.Damage += r2.Damage
+	s.Armor += r1.Armor
+	s.Armor += r2.Armor
+
+	return
+}
+
+func (b *buyer) next(shop *shop) bool {
+	b.ring2Index++
+	if b.ring2Index >= len(shop.rings) {
+		b.ring1Index++
+		b.ring2Index = b.ring1Index + 1
+		if b.ring1Index == len(shop.rings) {
+			b.ring1Index = 0
+			b.ring2Index = 0
+
+			b.armorIndex++
+			if b.armorIndex == len(shop.armors) {
+				b.armorIndex = 0
+
+				b.weaponIndex++
+				if b.weaponIndex == len(shop.weapons) {
+					b.weaponIndex = 0
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (b *buyer) price(shop *shop) int {
+	gold := 0
+	gold += shop.weapons[b.weaponIndex].Cost
+	gold += shop.armors[b.armorIndex].Cost
+	gold += shop.rings[b.ring1Index].Cost
+	if b.ring2Index < len(shop.rings) {
+		gold += shop.rings[b.ring2Index].Cost
+	}
+	return gold
+}
+
+func (b *buyer) print(shop *shop) {
+	wn := shop.weapons[b.weaponIndex].Name
+	an := shop.armors[b.armorIndex].Name
+	r1 := shop.rings[b.ring1Index].Name
+	r2 := ""
+	if b.ring2Index < len(shop.rings) {
+		r2 = shop.rings[b.ring2Index].Name
+	}
+	fmt.Printf("Bought: %v + %v + %v + %v\n", wn, an, r1, r2)
+}
+
+func doesPlayerWin(player stats, boss stats) bool {
+	for player.HitPoints > 0 {
+
+		damageToBoss := player.Damage - boss.Armor
+		if damageToBoss < 1 {
+			damageToBoss = 1
+		}
+		boss.HitPoints -= damageToBoss
+		if boss.HitPoints <= 0 {
+			break
+		}
+
+		damageToPlayer := boss.Damage - player.Armor
+		if damageToPlayer < 1 {
+			damageToPlayer = 1
+		}
+		player.HitPoints -= damageToPlayer
+	}
+	return player.HitPoints > 0
+}
+
+func findOptimumThingsToBuyToBeatBoss(player stats, boss stats, shop *shop) {
 
 	// Rules:
 	// - You must and can only buy one weapon
-	// - You optionally can be one armor
+	// - You optionally can buy one armor
 	// - You optionally can buy maximum 2 rings
 	// - The shop only has one of each item
 
+	bestBuyPrice := 100000
+	bestBuy := &buyer{}
+
 	// Run all the combinations:
+	b := &buyer{}
+	for true {
+		playerStats := b.buy(player, shop)
+
+		if doesPlayerWin(playerStats, boss) {
+			price := b.price(shop)
+			if price < bestBuyPrice {
+				bestBuy = &buyer{weaponIndex: b.weaponIndex, armorIndex: b.armorIndex, ring1Index: b.ring1Index, ring2Index: b.ring2Index}
+				bestBuyPrice = price
+			}
+		} else {
+			fmt.Println("Player looses")
+			b.print(shop)
+		}
+
+		if b.next(shop) == false {
+			break
+		}
+	}
+
+	fmt.Printf("Least amount of gold = %v \n", bestBuyPrice)
+	bestBuy.print(shop)
 }
 
 func main() {
-	player := &stats{HitPoints: 100, Damage: 1, Armor: 0}
+	player := stats{HitPoints: 100, Damage: 0, Armor: 0}
 	shop, boss := readInputFromFile("input.text")
 	shop.print()
 	boss.print()
