@@ -98,11 +98,10 @@ type stats struct {
 	Armor     int32
 }
 
-func (s *stats) deserializeProperty(str string) {
+func (s *stats) deserialize(str string) {
 	parts := strings.Split(str, ":")
 	if len(parts) == 2 {
 		value, _ := strconv.ParseInt(strings.Trim(parts[1], " "), 10, 32)
-		fmt.Printf("Value = %v \n", value)
 		if parts[0] == "Hit Points" {
 			s.HitPoints = int32(value)
 		} else if parts[0] == "Damage" {
@@ -113,24 +112,144 @@ func (s *stats) deserializeProperty(str string) {
 	}
 }
 
-func printStats(s *stats) {
-	fmt.Printf("HitPoints : %v\n", s.HitPoints)
-	fmt.Printf("Damage : %v\n", s.Damage)
-	fmt.Printf("Armor : %v\n", s.Armor)
+func (s *stats) print() {
+	fmt.Printf("Stats ============================================================ \n")
+	fmt.Printf("    HitPoints : %v\n", s.HitPoints)
+	fmt.Printf("    Damage : %v\n", s.Damage)
+	fmt.Printf("    Armor : %v\n", s.Armor)
 }
 
-func readInputFromFile(filename string) (s *stats) {
-	s = &stats{}
+type weapon struct {
+	Name   string
+	Cost   int32
+	Damage int32
+	Armor  int32
+}
+
+type armor struct {
+	Name   string
+	Cost   int32
+	Damage int32
+	Armor  int32
+}
+
+type ring struct {
+	Name   string
+	Cost   int32
+	Damage int32
+	Armor  int32
+}
+
+type shop struct {
+	weapons []weapon
+	armors  []armor
+	rings   []ring
+}
+
+func (s *shop) deserialize(str string) {
+	parts := strings.Split(str, ",")
+	if len(parts) == 5 {
+		index := 0
+		ctgr := strings.Trim(parts[index], " ")
+		index++
+		name := strings.Trim(parts[index], " ")
+		index++
+		cost, _ := strconv.ParseInt(strings.Trim(parts[index], " "), 10, 32)
+		index++
+		damg, _ := strconv.ParseInt(strings.Trim(parts[index], " "), 10, 32)
+		index++
+		armr, _ := strconv.ParseInt(strings.Trim(parts[index], " "), 10, 32)
+		index++
+
+		ctgr = strings.ToLower(ctgr)
+		name = strings.ToLower(name)
+
+		switch ctgr {
+		case "weapon":
+			w := weapon{Name: name, Cost: int32(cost), Damage: int32(damg), Armor: int32(armr)}
+			s.weapons = append(s.weapons, w)
+			break
+		case "armor":
+			a := armor{Name: name, Cost: int32(cost), Damage: int32(damg), Armor: int32(armr)}
+			s.armors = append(s.armors, a)
+			break
+		case "ring":
+			r := ring{Name: name, Cost: int32(cost), Damage: int32(damg), Armor: int32(armr)}
+			s.rings = append(s.rings, r)
+			break
+		}
+
+	}
+}
+
+func (s *shop) print() {
+	fmt.Printf("Shop ============================================================ \n")
+
+	fmt.Printf("Weapons : %v\n", len(s.weapons))
+	for _, w := range s.weapons {
+		fmt.Printf("    Name : %v\n", w.Name)
+		fmt.Printf("      Cost : %v\n", w.Cost)
+		fmt.Printf("      Damage : %v\n", w.Damage)
+		fmt.Printf("      Armor : %v\n", w.Armor)
+	}
+
+	fmt.Printf("Armors : %v\n", len(s.armors))
+	for _, a := range s.armors {
+		fmt.Printf("    Name : %v\n", a.Name)
+		fmt.Printf("      Cost : %v\n", a.Cost)
+		fmt.Printf("      Damage : %v\n", a.Damage)
+		fmt.Printf("      Armor : %v\n", a.Armor)
+	}
+
+	fmt.Printf("Rings : %v\n", len(s.rings))
+	for _, r := range s.rings {
+		fmt.Printf("    Name : %v\n", r.Name)
+		fmt.Printf("      Cost : %v\n", r.Cost)
+		fmt.Printf("      Damage : %v\n", r.Damage)
+		fmt.Printf("      Armor : %v\n", r.Armor)
+	}
+}
+
+func readInputFromFile(filename string) (shopx *shop, statx *stats) {
+	statx = &stats{}
+	shopx = &shop{weapons: make([]weapon, 0), armors: make([]armor, 0), rings: make([]ring, 0)}
+
+	object := ""
 
 	computator := func(text string, line int) {
-		s.deserializeProperty(text)
+		if text == "#Boss" {
+			object = "boss"
+		} else if text == "#Shop" {
+			object = "shop"
+		} else {
+			if object == "boss" {
+				statx.deserialize(text)
+			} else if object == "shop" {
+				shopx.deserialize(text)
+			}
+		}
+
 	}
 	iterateOverLinesInTextFile(filename, computator)
 
-	return s
+	return shopx, statx
+}
+
+func findOptimumThingsToBuyToBeatBoss(player *stats, boss *stats, shop *shop) {
+
+	// Rules:
+	// - You must and can only buy one weapon
+	// - You optionally can be one armor
+	// - You optionally can buy maximum 2 rings
+	// - The shop only has one of each item
+
+	// Run all the combinations:
 }
 
 func main() {
-	boss := readInputFromFile("input.text")
-	printStats(boss)
+	player := &stats{HitPoints: 100, Damage: 1, Armor: 0}
+	shop, boss := readInputFromFile("input.text")
+	shop.print()
+	boss.print()
+	findOptimumThingsToBuyToBeatBoss(player, boss, shop)
 }
